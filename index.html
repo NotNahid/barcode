@@ -14,9 +14,7 @@
     flex-direction: column;
     align-items: center;
   }
-  h1 {
-    color: #333;
-  }
+  h1 { color: #333; }
   input, button {
     padding: 10px;
     margin: 5px;
@@ -41,16 +39,13 @@
     box-shadow: 0 3px 6px rgba(0,0,0,0.1);
     text-align: center;
   }
-  #barcodeText {
-    font-size: 14px;
-    margin-top: 6px;
-    font-weight: bold;
-    color: #333;
-  }
+  #barcodeText { font-size: 14px; margin-top: 6px; font-weight: bold; color: #333; }
   #historyPanel {
     margin-top: 30px;
     max-width: 700px;
     width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
   }
   #searchInput {
     width: 100%;
@@ -72,30 +67,11 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     transition: 0.2s;
   }
-  .history-item:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  }
-  .history-left {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    align-items: center;
-  }
-  .history-left input {
-    font-size: 12px;
-    padding: 6px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-  }
-  .history-right button {
-    padding: 6px 10px;
-    font-size: 12px;
-    border-radius: 4px;
-    margin-left: 5px;
-  }
-  .history-right button:hover {
-    opacity: 0.8;
-  }
+  .history-item:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+  .history-left { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .history-left input { font-size: 12px; padding: 6px; border-radius: 4px; border: 1px solid #ccc; }
+  .history-right button { padding: 6px 10px; font-size: 12px; border-radius: 4px; margin-left: 5px; }
+  .history-right button:hover { opacity: 0.8; }
   @media(max-width:600px){
     .history-left { flex-direction: column; align-items: flex-start; }
     .history-right { margin-top: 5px; }
@@ -128,6 +104,19 @@
 <script>
 let history = [];
 
+// Load history from localStorage on page load
+window.onload = function() {
+  const storedHistory = localStorage.getItem('barcodeHistory');
+  if(storedHistory) {
+    history = JSON.parse(storedHistory);
+    renderHistory();
+  }
+};
+
+function saveHistory() {
+  localStorage.setItem('barcodeHistory', JSON.stringify(history));
+}
+
 function generateBarcode() {
   const value = document.getElementById('barcodeValue').value.trim();
   const label = document.getElementById('barcodeLabel').value.trim();
@@ -136,8 +125,12 @@ function generateBarcode() {
   JsBarcode("#barcode", value, { format: "CODE128", lineColor: "#000", width: 1.5, height: 60, displayValue: false });
   document.getElementById('barcodeText').textContent = label;
 
-  history.unshift({value, label});
-  renderHistory();
+  // Prevent duplicate exact entries
+  if(!history.some(h => h.value===value && h.label===label)) {
+    history.unshift({value, label});
+    saveHistory();
+    renderHistory();
+  }
 }
 
 function renderHistory() {
@@ -167,6 +160,7 @@ function renderHistory() {
 
 function updateHistory(index, key, value) {
   history[index][key] = value;
+  saveHistory();
   renderHistory();
 }
 
@@ -180,6 +174,7 @@ function loadHistory(index) {
 
 function deleteHistory(index) {
   history.splice(index,1);
+  saveHistory();
   renderHistory();
 }
 
