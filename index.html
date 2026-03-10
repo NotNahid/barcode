@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Barcode Generator</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f2f5;
+    margin: 0;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 {
+    color: #333;
+  }
+  input, button {
+    padding: 10px;
+    margin: 5px;
+    font-size: 14px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  input:focus { outline: 2px solid #4a90e2; border-color: #4a90e2; }
+  button {
+    background-color: #4a90e2;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  button:hover { background-color: #357ABD; }
+  #barcodeContainer {
+    margin-top: 20px;
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  #barcodeText {
+    font-size: 14px;
+    margin-top: 6px;
+    font-weight: bold;
+    color: #333;
+  }
+  #historyPanel {
+    margin-top: 30px;
+    max-width: 700px;
+    width: 100%;
+  }
+  #searchInput {
+    width: 100%;
+    padding: 8px;
+    font-size: 14px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  .history-item {
+    background: #fff;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: 0.2s;
+  }
+  .history-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  .history-left {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+  }
+  .history-left input {
+    font-size: 12px;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  .history-right button {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    margin-left: 5px;
+  }
+  .history-right button:hover {
+    opacity: 0.8;
+  }
+  @media(max-width:600px){
+    .history-left { flex-direction: column; align-items: flex-start; }
+    .history-right { margin-top: 5px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>SONY PLUS Barcode Generator</h1>
+
+<div style="width:100%; max-width:500px;">
+  <input type="text" id="barcodeValue" placeholder="Enter barcode value" />
+  <input type="text" id="barcodeLabel" placeholder="Enter text below barcode" />
+  <div>
+    <button onclick="generateBarcode()">Generate Barcode</button>
+    <button onclick="downloadBarcode()">Download Barcode</button>
+  </div>
+</div>
+
+<div id="barcodeContainer">
+  <svg id="barcode"></svg>
+  <div id="barcodeText"></div>
+</div>
+
+<h2>History</h2>
+<input type="text" id="searchInput" placeholder="Search history..." oninput="renderHistory()" />
+<div id="historyPanel"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script>
+let history = [];
+
+function generateBarcode() {
+  const value = document.getElementById('barcodeValue').value.trim();
+  const label = document.getElementById('barcodeLabel').value.trim();
+  if(!value) { alert('Enter barcode value'); return; }
+
+  JsBarcode("#barcode", value, { format: "CODE128", lineColor: "#000", width: 1.5, height: 60, displayValue: false });
+  document.getElementById('barcodeText').textContent = label;
+
+  history.unshift({value, label});
+  renderHistory();
+}
+
+function renderHistory() {
+  const panel = document.getElementById('historyPanel');
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  panel.innerHTML = '';
+
+  history.forEach((item, index) => {
+    if(item.value.toLowerCase().includes(searchTerm) || item.label.toLowerCase().includes(searchTerm)) {
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `
+        <div class="history-left">
+          <input type="text" value="${item.value}" onchange="updateHistory(${index}, 'value', this.value)" />
+          <input type="text" value="${item.label}" onchange="updateHistory(${index}, 'label', this.value)" />
+        </div>
+        <div class="history-right">
+          <button onclick="loadHistory(${index})">Load</button>
+          <button onclick="downloadHistory(${index})">Download</button>
+          <button onclick="deleteHistory(${index})">Delete</button>
+        </div>
+      `;
+      panel.appendChild(div);
+    }
+  });
+}
+
+function updateHistory(index, key, value) {
+  history[index][key] = value;
+  renderHistory();
+}
+
+function loadHistory(index) {
+  const item = history[index];
+  document.getElementById('barcodeValue').value = item.value;
+  document.getElementById('barcodeLabel').value = item.label;
+  JsBarcode("#barcode", item.value, { format: "CODE128", lineColor: "#000", width: 1.5, height: 60, displayValue: false });
+  document.getElementById('barcodeText').textContent = item.label;
+}
+
+function deleteHistory(index) {
+  history.splice(index,1);
+  renderHistory();
+}
+
+function downloadBarcode() {
+  const svg = document.getElementById('barcode');
+  const label = document.getElementById('barcodeText').textContent;
+  if(!svg.innerHTML){alert('Generate a barcode first'); return;}
+  downloadSVG(svg,label);
+}
+
+function downloadHistory(index) {
+  const item = history[index];
+  const tempSvg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  JsBarcode(tempSvg, item.value, { format: "CODE128", lineColor: "#000", width:1.5, height:60, displayValue:false });
+  downloadSVG(tempSvg,item.label);
+}
+
+function downloadSVG(svg,label){
+  const serializer = new XMLSerializer();
+  const svgString = serializer.serializeToString(svg);
+  const img = new Image();
+  img.onload=function(){
+    const canvas = document.createElement('canvas');
+    const displayedWidth = svg.clientWidth || img.width;
+    const displayedHeight = svg.clientHeight || img.height;
+    canvas.width = displayedWidth;
+    canvas.height = displayedHeight + 20;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,displayedWidth,displayedHeight);
+    ctx.fillStyle = "#000";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(label, canvas.width/2, displayedHeight + 15);
+    const link = document.createElement('a');
+    link.download='barcode.png';
+    link.href=canvas.toDataURL('image/png');
+    link.click();
+  };
+  img.src='data:image/svg+xml;base64,'+btoa(svgString);
+}
+</script>
+
+</body>
+</html>
